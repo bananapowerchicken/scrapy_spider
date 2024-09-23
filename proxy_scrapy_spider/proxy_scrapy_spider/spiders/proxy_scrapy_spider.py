@@ -4,23 +4,12 @@ import base64
 
 class ProxyScrapySpider(scrapy.Spider):
     name = 'proxy_scrapy_spider'
-    start_urls = [
-        # f'http://free-proxy.cz/en/proxylist/main/{page}' for page in range(1, 2)
-        'https://www.freeproxy.world/?type=&anonymity=&country=&speed=&port=&page=2'
-    ]
 
-    # def parse(self, response):
-    #     print('start')
-    #     print(response)
-    #     for row in response.css('table#proxy_list tbody tr'):
-    #         ip_encoded = row.css('script::text').re_first(r'\"(.+?)\"')  # Извлечение закодированного IP
-    #         port = row.css('td:nth-child(2)::text').get()  # Извлечение порта
-    #         print(f'AAA {ip_encoded} {port}')
-
-    #         if ip_encoded and port:
-    #             # Форматируем прокси как IP:PORT
-    #             proxy = f'{ip_encoded}:{port}'
-    #     print('stop')
+    def start_requests(self):
+        # Генерируем URL'ы для всех страниц (например, с 1 по 5)
+        urls = [f'https://www.freeproxy.world/?type=&anonymity=&country=&speed=&port=&page={page}' for page in range(1, 6)]
+        for url in urls:
+            yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
         # Ищем все строки таблицы с прокси
