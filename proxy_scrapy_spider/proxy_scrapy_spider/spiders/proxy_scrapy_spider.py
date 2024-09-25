@@ -82,6 +82,7 @@ class ProxyScrapySpider(scrapy.Spider):
 
             # Добавляем новую запись
             results[save_id] = self.proxies_batch
+            print(f'write to file {self.proxies_batch}')
 
             # Сохраняем обратно в файл
             with open(self.save_file, 'w') as f:
@@ -98,8 +99,7 @@ class ProxyScrapySpider(scrapy.Spider):
         self.get_new_token()
         if not self.form_token or not self.cookies:
             print("Unable to get form_token or cookies, skipping upload.")
-            return
-            
+            return            
 
         proxy_data = {
             "len": len(self.proxies_batch),
@@ -135,6 +135,7 @@ class ProxyScrapySpider(scrapy.Spider):
         elif response.status_code == 200:
             response_data = response.json()
             save_id = response_data.get("save_id", "unknown_id")
+            self.save_proxies(save_id)
             print(f'Successfully uploaded with save_id: {save_id}')
         else:
             print(f'Failed to upload - Status: {response.status_code}')
