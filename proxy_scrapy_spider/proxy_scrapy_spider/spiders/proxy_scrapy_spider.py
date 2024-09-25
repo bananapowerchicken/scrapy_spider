@@ -54,8 +54,7 @@ class ProxyScrapySpider(scrapy.Spider):
         Получаем новый токен с сервера и сохраняем его вместе с куки.
         """
         headers = {
-            'Cookie': f'x-user_id=t_7850941c',  # Передаем user_id в cookie
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'  # Пример User-Agent
+            'Cookie': f'x-user_id=t_7850941c',  # Передаем user_id в cookie            
         }
         response = requests.get(self.get_token_url, headers=headers)
         if response.status_code == 200:
@@ -69,27 +68,27 @@ class ProxyScrapySpider(scrapy.Spider):
             self.form_token = None
 
 
-    # def save_proxies(self, save_id):
-    #     """
-    #     Сохраняет загруженные прокси с save_id в файл results.json.
-    #     """
-    #     try:
-    #         # Загружаем уже сохраненные данные, если файл существует
-    #         try:
-    #             with open(self.save_file, 'r') as f:
-    #                 results = json.load(f)
-    #         except FileNotFoundError:
-    #             results = {}
+    def save_proxies(self, save_id):
+        """
+        Сохраняет загруженные прокси с save_id в файл results.json.
+        """
+        try:
+            # Загружаем уже сохраненные данные, если файл существует
+            try:
+                with open(self.save_file, 'r') as f:
+                    results = json.load(f)
+            except FileNotFoundError:
+                results = {}
 
-    #         # Добавляем новую запись
-    #         results[save_id] = self.proxies_batch
+            # Добавляем новую запись
+            results[save_id] = self.proxies_batch
 
-    #         # Сохраняем обратно в файл
-    #         with open(self.save_file, 'w') as f:
-    #             json.dump(results, f, indent=4)
-    #         self.log(f'Successfully saved proxies with save_id {save_id}')
-    #     except Exception as e:
-    #         self.log(f'Error saving proxies: {e}')
+            # Сохраняем обратно в файл
+            with open(self.save_file, 'w') as f:
+                json.dump(results, f, indent=4)
+            self.log(f'Successfully saved proxies with save_id {save_id}')
+        except Exception as e:
+            self.log(f'Error saving proxies: {e}')
 
     def upload_proxies(self):
         """
@@ -100,13 +99,14 @@ class ProxyScrapySpider(scrapy.Spider):
         if not self.form_token or not self.cookies:
             print("Unable to get form_token or cookies, skipping upload.")
             return
+            
 
         proxy_data = {
             "len": len(self.proxies_batch),
             "user_id": "t_7850941c",
             "proxies": ', '.join(self.proxies_batch)
         }
-
+        time.sleep(15)
         # Отправляем данные с куки и токеном
         response = requests.post(self.upload_url, json=proxy_data, cookies=self.cookies)
         print(f'First try response: {response.status_code}')
@@ -114,7 +114,7 @@ class ProxyScrapySpider(scrapy.Spider):
         # Если статус 429 (слишком много запросов)
         if response.status_code == 429:
             print('Received 429, waiting and refreshing token...')
-            time.sleep(15)  # Ожидание перед повторной попыткой
+            time.sleep(20)  # Ожидание перед повторной попыткой
 
             # Получаем новый токен
             self.get_new_token()
@@ -128,7 +128,7 @@ class ProxyScrapySpider(scrapy.Spider):
             if response.status_code == 200:
                 response_data = response.json()
                 save_id = response_data.get("save_id", "unknown_id")
-                # self.save_proxies(save_id)
+                self.save_proxies(save_id)
                 print(f'Successfully uploaded with save_id: {save_id}')
             else:
                 print(f'Failed to upload after 429 - Status: {response.status_code}')
