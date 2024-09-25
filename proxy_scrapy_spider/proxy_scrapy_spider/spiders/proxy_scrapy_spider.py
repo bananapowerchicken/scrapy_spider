@@ -19,7 +19,7 @@ class ProxyScrapySpider(scrapy.Spider):
         self.proxies_batch = []
         self.form_token = None
         self.cookies = None
-                
+        self.request_count = 0  # Счётчик запросов
         self.start_time = datetime.now()
 
         if not os.path.exists(self.save_file):
@@ -28,7 +28,7 @@ class ProxyScrapySpider(scrapy.Spider):
 
 
     def start_requests(self):
-        urls = [f'https://www.freeproxy.world/?type=&anonymity=&country=&speed=&port=&page={page}' for page in range(1, 2)]
+        urls = [f'https://www.freeproxy.world/?type=&anonymity=&country=&speed=&port=&page={page}' for page in range(1, 6)]
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
 
@@ -96,34 +96,33 @@ class ProxyScrapySpider(scrapy.Spider):
             "proxies": ', '.join(self.proxies_batch)
         }
 
-        response = requests.post(self.upload_url, json=proxy_data, cookies=self.cookies)
-        print(f'First try response: {response.status_code}')
+        max_attempts = 10 
+        attempt = 0
+        wait_time = 30
 
-        if response.status_code == 429:
-            print('Received 429, waiting and refreshing token...')
-
-            self.get_new_token()
-            if not self.form_token or not self.cookies:
-                print("Unable to get token or cookies after 429, skipping upload.")
-                return
-
+        while attempt < max_attempts:
             response = requests.post(self.upload_url, json=proxy_data, cookies=self.cookies)
-            print(f'Second try response: {response.status_code}')
+            print(f'Attempt {attempt + 1} - Response status: {response.status_code}')
 
             if response.status_code == 200:
                 response_data = response.json()
                 save_id = response_data.get("save_id", "unknown_id")
                 self.save_proxies(save_id)
                 print(f'Successfully uploaded with save_id: {save_id}')
+                break
+            elif response.status_code == 429:
+                print(f'Received 429 - Waiting {wait_time} seconds before retry...')
+                time.sleep(wait_time)
+                attempt += 1
+                wait_time += 15
+                self.get_new_token()
             else:
-                print(f'Failed to upload after 429 - Status: {response.status_code}')
-        elif response.status_code == 200:
-            response_data = response.json()
-            save_id = response_data.get("save_id", "unknown_id")
-            self.save_proxies(save_id)
-            print(f'Successfully uploaded with save_id: {save_id}')
-        else:
-            print(f'Failed to upload - Status: {response.status_code}')
+                print(f'Failed to upload - Status: {response.status_code}')
+                break
+
+        if attempt == max_attempts:
+            print(f"Failed to upload after {max_attempts} attempts")
+
     
     def save_execution_time(self):
         try:
